@@ -1,9 +1,13 @@
 const mongoose = require("mongoose");
+
+//Reply Schema
 const ReplySchema = new mongoose.Schema({
     content:{type:String},
     author:{type: mongoose.Schema.Types.ObjectId,ref:"user"},
     date: { type: Date, default: Date.now }
 })
+
+//Comment Schema
 const CommentSchema = new mongoose.Schema({
     content:{type:String},
     author:{type: mongoose.Schema.Types.ObjectId,ref:"yo"},
@@ -11,8 +15,7 @@ const CommentSchema = new mongoose.Schema({
     Reply:[ReplySchema]
 })
 
-
-
+//User Schema
 userschema = new mongoose.Schema({
     username: {
         type: String,

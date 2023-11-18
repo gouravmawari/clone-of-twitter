@@ -5,19 +5,25 @@ const multer = require("multer");
 const User = require("./model.js");
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+
 const Storage = multer.diskStorage({
     destination: "space",
     filename(req, file, cb) {
         cb(null, file.originalname)
     }
 })
+
+
 const upload = multer({
     storage: Storage
 }).fields([{ name: 'profilephoto', maxCount: 1 }, { name: 'PostImage', maxCount: 1 }])
 
+
+//This API for registration
 app.post("/register", upload, async (req, res) => {
-    const {username, password} = req.body
-    console.log(username, password)
+    const { username, password } = req.body
+
     try {
         const user = new User({ username, password, profilephoto: { name: req.files.filename, path: "/space/" } });
         await user.save();
@@ -29,6 +35,8 @@ app.post("/register", upload, async (req, res) => {
     }
 })
 
+//This API for uploading text and photos
+
 app.put("/upload", upload, async (req, res) => {
     const { id, text } = req.body;
 
@@ -38,14 +46,14 @@ app.put("/upload", upload, async (req, res) => {
         post.Text = text
     }
     if (text && req.files) {
-        post= {
+        post = {
             Text: text,
             PostImage: req.files.filename
         }
     }
     try {
 
-        let result = await User.findOneAndUpdate({ _id:id }, { $push: { post: [post] } })
+        let result = await User.findOneAndUpdate({ _id: id }, { $push: { post: [post] } })
         res.status(200).json({ message: "Post added successfully." });
     }
     catch (error) {
@@ -53,12 +61,14 @@ app.put("/upload", upload, async (req, res) => {
         res.status(500).json(error)
     }
 })
+
+//Comment on any post
 app.post("/comt", async (req, res) => {
     const { user_id, post_owner_id, post_id, text } = req.body;
 
     try {
         // Find the user who is the owner of the post
-        const postOwner = await User.findById(post_owner_id); 
+        const postOwner = await User.findById(post_owner_id);
 
         // Check if the post owner exists
         if (!postOwner) {
@@ -84,33 +94,34 @@ app.post("/comt", async (req, res) => {
 
         res.status(200).json({ message: "Comment added successfully" });
     } catch (error) {
-        console.log(error);
         res.status(500).json(error);
     }
 });
 
-app.post("/reply", async(req, res) => {
+
+//Reply to Comment
+app.post("/reply", async (req, res) => {
     const { user_id, post_owner_id, post_id, text, cmt_id } = req.body;
     try {
         const postOwner = await User.findById(post_owner_id);
-        
+
         if (!postOwner) {
             return res.status(404).json({ message: 'Post owner not found' });
         }
-        
+
         const post = postOwner.post.id(post_id);
 
         // Check if the post exists
         if (!post) {
             return res.status(404).json({ message: 'Post not found within the post owner\'s posts' });
         }
-        
+
         const cmt = post.Comments.id(cmt_id);
-        
+
         if (!cmt) {
             return res.status(404).json({ message: 'Comment not found within the post' });
         }
-        
+
         const reply = {
             content: text,
             author: user_id,  // this is the commenter's ID
@@ -118,30 +129,32 @@ app.post("/reply", async(req, res) => {
         };
 
         cmt.Reply.push(reply); // This is the correction. Pushing reply to the cmt's Reply array.
-        
+
         await postOwner.save();
-        
+
         res.status(200).json({ message: "Reply added successfully" });
     } catch (error) {
-        console.log(error);
         res.status(500).json(error);
     }
 });
 
+
+//Follow
 app.put("/follow", async (req, res) => {
     const { user_ID, target_id } = req.body
     try {
-        const push = await User.findOneAndUpdate({_id: user_ID }, {
+        const push = await User.findOneAndUpdate({ _id: user_ID }, {
             $push: {
                 following: target_id
             }
         })
         res.status(200).json({ message: "Followed successfully." });
     } catch (error) {
-        console.log(error);
         res.status(500).json(error);
     }
 })
+
+//Delete your Post
 app.post("/deletepost", async (req, res) => {
     const { userId, docId } = req.body;
     try {
@@ -156,10 +169,11 @@ app.post("/deletepost", async (req, res) => {
 
         res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
-        console.error(error);
         res.status(500).json(error);
     }
 })
+
+// Update profile photo
 app.post("/updatepropic", upload, async (req, res) => {
     const { userId } = req.body;
 
@@ -194,10 +208,11 @@ app.post("/updatepropic", upload, async (req, res) => {
 
         return res.status(200).json({ message: "Profile photo is updated", user: updatedUser });
     } catch (error) {
-        console.log(error);
         return res.status(500).json({ message: "Internal server error", error: error.message });
     }
 });
+
+//Search Option
 app.get("/search_bar", async (req, res) => {
     const { usern_name } = req.query; // access the query parameters
     try {
@@ -208,10 +223,12 @@ app.get("/search_bar", async (req, res) => {
             res.status(404).send({ message: "User not found" }) // 404 is more appropriate for 'not found' errors
         }
     } catch (error) {
-        console.log(error);
+
         res.status(500).json({ message: "Internal server error", error: error.message });
     }
 })
+
+//change user Name
 app.post("/editusername", async (req, res) => {
     const { newusername, userId } = req.body;
 
@@ -232,31 +249,34 @@ app.post("/editusername", async (req, res) => {
             return res.status(200).json({ message: "Username is updated", user: updatedUser });
         }
     } catch (error) {
-        console.log(error);
+
         return res.status(500).json({ message: "Internal server error", error: error.message });
     }
-}); 
+});
 
-app.post("/retweet", async(req, res) => {
-    const {user_ID,retweet_post_Id,tweetText} = req.body;
+//Retweet someone post
+app.post("/retweet", async (req, res) => {
+    const { user_ID, retweet_post_Id, tweetText } = req.body;
 
-    try{
-        const result = await User.findOneAndUpdate({_id:user_ID},{
-            $push:{ 
+    try {
+        const result = await User.findOneAndUpdate({ _id: user_ID }, {
+            $push: {
                 Retweet: {
-                Text:tweetText,
-                post_Id:retweet_post_Id
-            }
+                    Text: tweetText,
+                    post_Id: retweet_post_Id
+                }
             }
         })
-        res.status(200).json({message:"message has been pushed"})
+        res.status(200).json({ message: "message has been pushed" })
     }
-    catch(error){
-        console.log("error");
+    catch (error) {
+
         res.status(500).json(error)
     }
 })
 
+
+//Connection to Data base(MongoDB)
 const dbURI = "mongodb+srv://guddu:guddu@cluster1.ved7bni.mongodb.net/yes?retryWrites=true&w=majority";
 mongoose.connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then((result) => {
